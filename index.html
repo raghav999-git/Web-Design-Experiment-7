@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>React Notes App - Experiment 7</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+  body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 30px 20px; }
+  .app { max-width: 800px; margin: 0 auto; }
+  .header { text-align: center; color: white; margin-bottom: 30px; }
+  .header h1 { font-size: 2.5rem; margin-bottom: 8px; }
+  .header p { opacity: 0.9; }
+  .input-box { display: flex; gap: 10px; margin-bottom: 20px; }
+  .input-box input { flex: 1; padding: 15px 20px; border: none; border-radius: 12px; font-size: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none; }
+  .input-box button { padding: 15px 30px; background: #222; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 15px; transition: 0.3s; }
+  .input-box button:hover { background: #444; transform: translateY(-2px); }
+  .search { width: 100%; padding: 12px 20px; border: none; border-radius: 12px; margin-bottom: 20px; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); outline: none; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+  .note { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 12px; transition: 0.3s; }
+  .note:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+  .note p { color: #333; word-break: break-word; line-height: 1.5; }
+  .note .date { font-size: 11px; color: #999; }
+  .note .actions { display: flex; gap: 8px; }
+  .note .actions button { flex: 1; padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; transition: 0.2s; }
+  .edit-btn { background: #fbbf24; color: #333; }
+  .edit-btn:hover { background: #f59e0b; }
+  .del-btn { background: #ef4444; color: white; }
+  .del-btn:hover { background: #dc2626; }
+  .empty { color: white; text-align: center; padding: 40px; opacity: 0.8; font-style: italic; }
+  .edit-input { width: 100%; padding: 10px; border: 2px solid #fbbf24; border-radius: 8px; font-family: inherit; font-size: 14px; outline: none; }
+  .save-btn { background: #10b981; color: white; }
+  .save-btn:hover { background: #059669; }
+  @media(max-width: 500px) { .header h1 { font-size: 1.8rem; } .input-box { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function App() {
+  const [notes, setNotes] = useState(() => JSON.parse(localStorage.getItem("notes") || "[]"));
+  const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState("");
+
+  useEffect(() => { localStorage.setItem("notes", JSON.stringify(notes)); }, [notes]);
+
+  // CREATE
+  const addNote = () => {
+    if (!input.trim()) return;
+    const newNote = { id: Date.now(), text: input.trim(), date: new Date().toLocaleString() };
+    setNotes([newNote, ...notes]);
+    setInput("");
+  };
+
+  // DELETE
+  const deleteNote = (id) => setNotes(notes.filter(n => n.id !== id));
+
+  // UPDATE - start
+  const startEdit = (note) => { setEditId(note.id); setEditText(note.text); };
+
+  // UPDATE - save
+  const saveEdit = (id) => {
+    if (!editText.trim()) return;
+    setNotes(notes.map(n => n.id === id ? { ...n, text: editText.trim(), date: new Date().toLocaleString() + " (edited)" } : n));
+    setEditId(null); setEditText("");
+  };
+
+  const filtered = notes.filter(n => n.text.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="app">
+      <div className="header">
+        <h1>📝 React Notes App</h1>
+        <p>Single Page Application with Full CRUD</p>
+      </div>
+
+      <div className="input-box">
+        <input value={input} onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addNote()}
+          placeholder="Write a new note and press Enter..." />
+        <button onClick={addNote}>+ Add Note</button>
+      </div>
+
+      <input className="search" value={search} onChange={(e) => setSearch(e.target.value)}
+        placeholder="🔍 Search notes..." />
+
+      {filtered.length === 0 ? (
+        <div className="empty">No notes yet. Add your first one above! ✨</div>
+      ) : (
+        <div className="grid">
+          {filtered.map(note => (
+            <div key={note.id} className="note">
+              {editId === note.id ? (
+                <>
+                  <input className="edit-input" value={editText} autoFocus
+                    onChange={(e) => setEditText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && saveEdit(note.id)} />
+                  <div className="actions">
+                    <button className="save-btn" onClick={() => saveEdit(note.id)}>Save</button>
+                    <button className="del-btn" onClick={() => setEditId(null)}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>{note.text}</p>
+                  <span className="date">{note.date}</span>
+                  <div className="actions">
+                    <button className="edit-btn" onClick={() => startEdit(note)}>✏️ Edit</button>
+                    <button className="del-btn" onClick={() => deleteNote(note.id)}>🗑️ Delete</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
